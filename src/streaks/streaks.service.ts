@@ -69,12 +69,45 @@ export class StreaksService {
       streak.longestStreak || 0,
     );
 
+    // Reset freeze availability weekly (7 days since last freeze)
+    let freezeAvailable = streak.freezeAvailable;
+    if (streak.lastFreezeUsed) {
+      const daysSinceFreeze = differenceInDays(now, new Date(streak.lastFreezeUsed));
+      if (daysSinceFreeze >= 7) {
+        freezeAvailable = true;
+      }
+    }
+
     const [updatedStreak] = await this.drizzle.db
       .update(streaks)
       .set({
         currentStreak: newCurrentStreak,
         longestStreak: newLongestStreak,
         lastCheckIn: now,
+        freezeAvailable,
+        updatedAt: now,
+      })
+      .where(eq(streaks.id, streak.id))
+      .returning();
+
+    return updatedStreak;
+  }
+
+  async useFreeze(userId: string, type: string) {
+    const streak = await this.getStreakByType(userId, type);
+    const now = new Date();
+
+    if (!streak.freezeAvailable) {
+      throw new Error('No freeze available. You can use one freeze per week.');
+    }
+
+    // Freeze prevents streak from breaking for one missed day
+    const [updatedStreak] = await this.drizzle.db
+      .update(streaks)
+      .set({
+        freezeAvailable: false,
+        lastFreezeUsed: now,
+        lastCheckIn: now, // Extend last check-in
         updatedAt: now,
       })
       .where(eq(streaks.id, streak.id))

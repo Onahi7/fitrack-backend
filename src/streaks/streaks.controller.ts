@@ -24,4 +24,9 @@ export class StreaksController {
   async checkIn(@CurrentUser() user: any, @Body() dto: CheckInDto) {
     return this.streaksService.checkIn(user.uid, dto.type);
   }
+
+  @Post('freeze')
+  async useFreeze(@CurrentUser() user: any, @Body() dto: CheckInDto) {
+    return this.streaksService.useFreeze(user.uid, dto.type);
+  }
 }

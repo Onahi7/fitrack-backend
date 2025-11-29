@@ -9,6 +9,7 @@ export const streaks = pgTable('streaks', {
   longestStreak: integer('longest_streak').default(0),
   lastCheckIn: timestamp('last_check_in'),
   freezeAvailable: boolean('freeze_available').default(true),
+  lastFreezeUsed: timestamp('last_freeze_used'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

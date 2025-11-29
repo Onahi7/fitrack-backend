@@ -8,3 +8,5 @@ export * from './achievements.schema';
 export * from './photos.schema';
 export * from './reports.schema';
 export * from './subscriptions.schema';
+export * from './posts.schema';
+export * from './community.schema';

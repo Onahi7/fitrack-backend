@@ -11,6 +11,10 @@ import { BuddiesModule } from './buddies/buddies.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AchievementsModule } from './achievements/achievements.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { PostsModule } from './posts/posts.module';
+import { ChallengesModule } from './challenges/challenges.module';
+import { GroupsModule } from './groups/groups.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -28,6 +32,10 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     NotificationsModule,
     AchievementsModule,
     SubscriptionsModule,
+    PostsModule,
+    ChallengesModule,
+    GroupsModule,
+    EmailModule,
   ],
 })
 export class AppModule {}
