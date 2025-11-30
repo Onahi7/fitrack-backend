@@ -13,7 +13,19 @@ export const challenges = pgTable('challenges', {
   participantCount: integer('participant_count').default(0).notNull(),
   creatorId: text('creator_id').references(() => users.id).notNull(),
   imageUrl: text('image_url'),
+  isPublic: boolean('is_public').default(false).notNull(), // false = private to creator
+  inviteOnly: boolean('invite_only').default(true).notNull(), // true = users need invite to join
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const challengeInvites = pgTable('challenge_invites', {
+  id: serial('id').primaryKey(),
+  challengeId: integer('challenge_id').references(() => challenges.id).notNull(),
+  inviterId: text('inviter_id').references(() => users.id).notNull(),
+  inviteeId: text('invitee_id').references(() => users.id).notNull(),
+  status: text('status').default('pending').notNull(), // 'pending', 'accepted', 'declined'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  respondedAt: timestamp('responded_at'),
 });
 
 export const challengeParticipants = pgTable('challenge_participants', {
@@ -23,6 +35,17 @@ export const challengeParticipants = pgTable('challenge_participants', {
   progress: integer('progress').default(0).notNull(),
   completed: boolean('completed').default(false).notNull(),
   joinedAt: timestamp('joined_at').defaultNow().notNull(),
+});
+
+export const challengeCheckIns = pgTable('challenge_check_ins', {
+  id: serial('id').primaryKey(),
+  challengeId: integer('challenge_id').references(() => challenges.id).notNull(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  date: timestamp('date').notNull(),
+  goalMet: boolean('goal_met').notNull(),
+  value: integer('value').notNull(), // actual value achieved (glasses, meals, etc)
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const groups = pgTable('groups', {

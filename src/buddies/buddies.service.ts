@@ -146,23 +146,10 @@ export class BuddiesService {
    * Get all active buddies
    */
   async getActiveBuddies(userId: string) {
-    const buddies = await this.drizzle.db
-      .select({
-        id: buddyPairs.id,
-        buddy: users,
-        sharedGoals: buddyPairs.sharedGoals,
-        privacySettings: buddyPairs.privacySettings,
-        createdAt: buddyPairs.createdAt,
-        acceptedAt: buddyPairs.acceptedAt,
-      })
+    // Get buddy pairs where user is involved
+    const pairs = await this.drizzle.db
+      .select()
       .from(buddyPairs)
-      .leftJoin(
-        users,
-        or(
-          eq(users.id, buddyPairs.user1Id),
-          eq(users.id, buddyPairs.user2Id)
-        )
-      )
       .where(
         and(
           or(
@@ -173,17 +160,28 @@ export class BuddiesService {
         )
       );
 
-    // Filter out the current user from results
-    return buddies
-      .filter(b => b.buddy?.id !== userId)
-      .map(b => ({
-        id: b.id,
-        buddy: b.buddy,
-        sharedGoals: b.sharedGoals,
-        privacySettings: b.privacySettings,
-        createdAt: b.createdAt,
-        acceptedAt: b.acceptedAt,
-      }));
+    // For each pair, fetch the buddy user (not the current user)
+    const buddiesWithDetails = await Promise.all(
+      pairs.map(async (pair) => {
+        const buddyId = pair.user1Id === userId ? pair.user2Id : pair.user1Id;
+        const [buddy] = await this.drizzle.db
+          .select()
+          .from(users)
+          .where(eq(users.id, buddyId))
+          .limit(1);
+
+        return {
+          id: pair.id,
+          buddy,
+          sharedGoals: pair.sharedGoals,
+          privacySettings: pair.privacySettings,
+          createdAt: pair.createdAt,
+          acceptedAt: pair.acceptedAt,
+        };
+      })
+    );
+
+    return buddiesWithDetails;
   }
 
   /**

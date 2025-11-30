@@ -15,6 +15,7 @@ import { PostsModule } from './posts/posts.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { GroupsModule } from './groups/groups.module';
 import { EmailModule } from './email/email.module';
+import { PhotosModule } from './photos/photos.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { EmailModule } from './email/email.module';
     ChallengesModule,
     GroupsModule,
     EmailModule,
+    PhotosModule,
   ],
 })
 export class AppModule {}

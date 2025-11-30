@@ -36,6 +36,11 @@ export class GroupsController {
     return this.groupsService.getUserGroups(userId);
   }
 
+  @Get(':id/members')
+  getMembers(@Param('id') id: string) {
+    return this.groupsService.getMembers(+id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.groupsService.findOne(+id);
@@ -49,10 +54,5 @@ export class GroupsController {
   @Delete(':id/leave')
   leave(@Param('id') id: string, @UserId() userId: string) {
     return this.groupsService.leave(+id, userId);
-  }
-
-  @Get(':id/members')
-  getMembers(@Param('id') id: string) {
-    return this.groupsService.getMembers(+id);
   }
 }

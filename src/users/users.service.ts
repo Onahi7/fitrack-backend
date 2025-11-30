@@ -3,6 +3,7 @@ import { DrizzleService } from '../database/drizzle.service';
 import { users, userProfiles } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import { CreateUserDto, UpdateProfileDto } from './dto';
+import * as admin from 'firebase-admin';
 
 @Injectable()
 export class UsersService {
@@ -33,9 +34,14 @@ export class UsersService {
       .returning();
 
     // Create empty profile
-    await this.drizzle.db.insert(userProfiles).values({
-      userId: user.id,
-    });
+    try {
+      await this.drizzle.db.insert(userProfiles).values({
+        userId: user.id,
+      });
+    } catch (error) {
+      // Profile creation failed, but user was created - log the error but continue
+      console.error('Failed to create user profile for user', user.id, error);
+    }
 
     return user;
   }
@@ -69,14 +75,33 @@ export class UsersService {
   }
 
   async getUserProfile(userId: string) {
-    const [profile] = await this.drizzle.db
+    let [profile] = await this.drizzle.db
       .select()
       .from(userProfiles)
       .where(eq(userProfiles.userId, userId))
       .limit(1);
 
     if (!profile) {
-      throw new NotFoundException('Profile not found');
+      // Create profile if it doesn't exist
+      try {
+        [profile] = await this.drizzle.db
+          .insert(userProfiles)
+          .values({
+            userId: userId,
+          })
+          .returning();
+      } catch (error) {
+        // If there's a race condition and another process created the profile, try to get it
+        [profile] = await this.drizzle.db
+          .select()
+          .from(userProfiles)
+          .where(eq(userProfiles.userId, userId))
+          .limit(1);
+        
+        if (!profile) {
+          throw new NotFoundException('Profile not found and could not be created');
+        }
+      }
     }
 
     return profile;
@@ -91,6 +116,7 @@ export class UsersService {
       height,
       dailyCalorieGoal,
       dailyWaterGoal,
+      fastingStartTime,
       ...rest
     } = dto;
     const [profile] = await this.drizzle.db
@@ -103,6 +129,7 @@ export class UsersService {
         height: height !== undefined ? String(height) : undefined,
         dailyCalorieGoal: dailyCalorieGoal !== undefined ? String(dailyCalorieGoal) : undefined,
         dailyWaterGoal: dailyWaterGoal !== undefined ? String(dailyWaterGoal) : undefined,
+        fastingStartTime: fastingStartTime !== undefined ? new Date(fastingStartTime) : undefined,
         setupCompleted: true,
         updatedAt: new Date(),
       })
@@ -137,5 +164,87 @@ export class UsersService {
   async deleteUser(userId: string) {
     await this.drizzle.db.delete(users).where(eq(users.id, userId));
     return { success: true, message: 'Account deleted successfully' };
+  }
+
+  async createAdmin(email: string, password: string) {
+    const [existingAdmin] = await this.drizzle.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingAdmin) {
+      throw new ConflictException('Admin user with this email already exists');
+    }
+
+    try {
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: 'Admin',
+      });
+
+      await admin.auth().setCustomUserClaims(userRecord.uid, { role: 'admin' });
+
+      const [user] = await this.drizzle.db
+        .insert(users)
+        .values({
+          id: userRecord.uid,
+          email: userRecord.email,
+          displayName: userRecord.displayName,
+          role: 'admin',
+        })
+        .returning();
+
+      await this.drizzle.db.insert(userProfiles).values({
+        userId: user.id,
+        setupCompleted: true,
+      });
+
+      return {
+        message: 'Admin user created successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        },
+      };
+    } catch (error) {
+      console.error('Error creating admin user:', error);
+      throw new Error(`Failed to create admin user: ${error.message}`);
+    }
+  }
+
+  async adminLogin(idToken: string) {
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      
+      const [user] = await this.drizzle.db
+        .select()
+        .from(users)
+        .where(eq(users.id, decodedToken.uid))
+        .limit(1);
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (user.role !== 'admin') {
+        throw new ConflictException('User is not an admin');
+      }
+
+      return {
+        token: idToken,
+        admin: {
+          id: user.id,
+          email: user.email,
+          name: user.displayName || 'Admin',
+          role: user.role,
+        },
+      };
+    } catch (error) {
+      console.error('Admin login error:', error);
+      throw error;
+    }
   }
 }
