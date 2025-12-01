@@ -10,7 +10,10 @@ import {
   Delete,
   ParseIntPipe,
   BadRequestException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ChallengesService } from './challenges.service';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
@@ -40,11 +43,13 @@ export class ChallengesController {
 
   @Post('admin')
   @UseGuards(AdminGuard)
-  createAdminChallenge(
+  @UseInterceptors(FileInterceptor('image'))
+  async createAdminChallenge(
     @UserId() userId: string,
     @Body() createChallengeDto: CreateChallengeDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.challengesService.createAdminChallenge(userId, createChallengeDto);
+    return this.challengesService.createAdminChallenge(userId, createChallengeDto, file);
   }
 
   @Get()

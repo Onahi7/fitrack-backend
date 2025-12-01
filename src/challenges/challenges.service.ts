@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { v2 as cloudinary } from 'cloudinary';
 import { DrizzleService } from '../database/drizzle.service';
 import {
   challenges,
@@ -19,7 +21,17 @@ import { eq, desc, and, sql, gte, lte, between, or, isNull } from 'drizzle-orm';
 
 @Injectable()
 export class ChallengesService {
-  constructor(private readonly drizzle: DrizzleService) {}
+  constructor(
+    private readonly drizzle: DrizzleService,
+    private readonly configService: ConfigService,
+  ) {
+    // Initialize Cloudinary
+    cloudinary.config({
+      cloud_name: this.configService.get('CLOUDINARY_CLOUD_NAME'),
+      api_key: this.configService.get('CLOUDINARY_API_KEY'),
+      api_secret: this.configService.get('CLOUDINARY_API_SECRET'),
+    });
+  }
 
   async create(userId: string, createChallengeDto: CreateChallengeDto) {
     const startDate = new Date(createChallengeDto.startDate);
@@ -44,10 +56,37 @@ export class ChallengesService {
     return challenge;
   }
 
-  async createAdminChallenge(userId: string, createChallengeDto: CreateChallengeDto) {
+  async createAdminChallenge(
+    userId: string,
+    createChallengeDto: CreateChallengeDto,
+    file?: Express.Multer.File,
+  ) {
     const startDate = new Date(createChallengeDto.startDate);
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + createChallengeDto.duration);
+
+    let imageUrl = createChallengeDto.imageUrl;
+
+    // Upload image to Cloudinary if file is provided
+    if (file) {
+      const uploadResult = await new Promise<any>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'challenges',
+            transformation: [
+              { width: 800, height: 600, crop: 'fill' },
+              { quality: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          },
+        );
+        uploadStream.end(file.buffer);
+      });
+      imageUrl = uploadResult.secure_url;
+    }
 
     const [challenge] = await this.drizzle.db
       .insert(challenges)
@@ -60,7 +99,7 @@ export class ChallengesService {
         startDate,
         endDate,
         creatorId: userId,
-        imageUrl: createChallengeDto.imageUrl,
+        imageUrl,
         isPublic: true, // Admin challenges are public
         inviteOnly: false, // Anyone can join
         isPremiumChallenge: createChallengeDto.isPremiumChallenge || false,
