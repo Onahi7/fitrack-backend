@@ -21,11 +21,13 @@ export class MealsController {
 
   @Post()
   async createMeal(@CurrentUser() user: any, @Body() dto: CreateMealDto) {
+    console.log('[MEALS CONTROLLER] createMeal - user:', user, 'userId:', user.uid);
     return this.mealsService.createMeal(user.uid, dto);
   }
 
   @Get()
   async getMeals(@CurrentUser() user: any, @Query() query: QueryMealsDto) {
+    console.log('[MEALS CONTROLLER] getMeals - user:', user, 'userId:', user.uid);
     return this.mealsService.getMealsByDate(user.uid, query);
   }
 

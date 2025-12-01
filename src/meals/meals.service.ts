@@ -10,6 +10,7 @@ export class MealsService {
   constructor(private drizzle: DrizzleService) {}
 
   async createMeal(userId: string, dto: CreateMealDto) {
+    console.log('[MEALS] Creating meal for userId:', userId);
     // Convert numeric fields to strings for Drizzle
     const { calories, protein, carbs, fats, ...rest } = dto;
     const [meal] = await this.drizzle.db
@@ -25,16 +26,18 @@ export class MealsService {
       })
       .returning();
 
+    console.log('[MEALS] Created meal:', meal);
     return meal;
   }
 
   async getMealsByDate(userId: string, query: QueryMealsDto) {
+    console.log('[MEALS] Getting meals for userId:', userId, 'query:', query);
     if (query.date) {
       const date = new Date(query.date);
       const start = startOfDay(date);
       const end = endOfDay(date);
 
-      return this.drizzle.db
+      const result = await this.drizzle.db
         .select()
         .from(meals)
         .where(
@@ -43,8 +46,10 @@ export class MealsService {
             gte(meals.date, start),
             lte(meals.date, end),
           ),
-        )
-        .orderBy(meals.date);
+        );
+      
+      console.log('[MEALS] Found meals:', result.length);
+      return result;
     }
 
     return this.drizzle.db
