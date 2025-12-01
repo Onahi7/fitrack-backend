@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DrizzleService } from '../database/drizzle.service';
-import { posts, postLikes, postComments } from '../database/schema';
+import { posts, postLikes, postComments, users } from '../database/schema';
 import { CreatePostDto } from './dto/create-post.dto';
 import { eq, desc, and, sql } from 'drizzle-orm';
 
@@ -31,8 +31,13 @@ export class PostsService {
         likesCount: posts.likesCount,
         commentsCount: posts.commentsCount,
         createdAt: posts.createdAt,
+        user: {
+          displayName: users.displayName,
+          photoURL: users.photoURL,
+        },
       })
       .from(posts)
+      .leftJoin(users, eq(posts.userId, users.id))
       .orderBy(desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
@@ -46,8 +51,21 @@ export class PostsService {
 
   async findByUser(userId: string, limit = 50, offset = 0) {
     return this.drizzle.db
-      .select()
+      .select({
+        id: posts.id,
+        userId: posts.userId,
+        content: posts.content,
+        imageUrl: posts.imageUrl,
+        likesCount: posts.likesCount,
+        commentsCount: posts.commentsCount,
+        createdAt: posts.createdAt,
+        user: {
+          displayName: users.displayName,
+          photoURL: users.photoURL,
+        },
+      })
       .from(posts)
+      .leftJoin(users, eq(posts.userId, users.id))
       .where(eq(posts.userId, userId))
       .orderBy(desc(posts.createdAt))
       .limit(limit)

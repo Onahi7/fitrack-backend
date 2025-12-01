@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DrizzleService } from '../database/drizzle.service';
-import { users, streaks, userProfiles } from '../database/schema';
-import { eq, and, lt, isNull } from 'drizzle-orm';
+import { users, streaks, userProfiles, notificationPreferences } from '../database/schema';
+import { eq, and, lt, isNull, sql } from 'drizzle-orm';
 import { Resend } from 'resend';
 import * as admin from 'firebase-admin';
+import { WebPushService } from './web-push.service';
 
 @Injectable()
 export class NotificationsService {
@@ -12,7 +13,10 @@ export class NotificationsService {
   private resend: Resend;
   private firebaseMessaging: admin.messaging.Messaging;
 
-  constructor(private drizzle: DrizzleService) {
+  constructor(
+    private drizzle: DrizzleService,
+    private webPushService: WebPushService,
+  ) {
     // Initialize Resend for email notifications
     if (process.env.RESEND_API_KEY) {
       this.resend = new Resend(process.env.RESEND_API_KEY);
@@ -351,4 +355,199 @@ export class NotificationsService {
       this.logger.log(`Would send buddy milestone notification: ${JSON.stringify(message)}`);
     }
   }
+
+  /**
+   * Send water reminders at 8 AM
+   */
+  @Cron('0 8 * * *', {
+    name: 'water-reminder-8am',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder8AM() {
+    await this.sendWaterReminders('08:00');
+  }
+
+  /**
+   * Send water reminders at 10 AM
+   */
+  @Cron('0 10 * * *', {
+    name: 'water-reminder-10am',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder10AM() {
+    await this.sendWaterReminders('10:00');
+  }
+
+  /**
+   * Send water reminders at 12 PM
+   */
+  @Cron('0 12 * * *', {
+    name: 'water-reminder-12pm',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder12PM() {
+    await this.sendWaterReminders('12:00');
+  }
+
+  /**
+   * Send water reminders at 2 PM
+   */
+  @Cron('0 14 * * *', {
+    name: 'water-reminder-2pm',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder2PM() {
+    await this.sendWaterReminders('14:00');
+  }
+
+  /**
+   * Send water reminders at 4 PM
+   */
+  @Cron('0 16 * * *', {
+    name: 'water-reminder-4pm',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder4PM() {
+    await this.sendWaterReminders('16:00');
+  }
+
+  /**
+   * Send water reminders at 6 PM
+   */
+  @Cron('0 18 * * *', {
+    name: 'water-reminder-6pm',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder6PM() {
+    await this.sendWaterReminders('18:00');
+  }
+
+  /**
+   * Send water reminders at 8 PM
+   */
+  @Cron('0 20 * * *', {
+    name: 'water-reminder-8pm',
+    timeZone: 'America/New_York',
+  })
+  async sendWaterReminder8PM() {
+    await this.sendWaterReminders('20:00');
+  }
+
+  /**
+   * Send water reminders to all users who have it enabled for this time
+   */
+  private async sendWaterReminders(time: string) {
+    this.logger.log(`Sending water reminders for ${time}...`);
+
+    try {
+      // Get all users
+      const allUsers = await this.drizzle.db
+        .select({
+          user: users,
+          profile: userProfiles,
+        })
+        .from(users)
+        .leftJoin(userProfiles, eq(userProfiles.userId, users.id));
+
+      let sentCount = 0;
+
+      for (const { user, profile } of allUsers) {
+        // Get user preferences
+        const prefs = await this.webPushService.getPreferences(user.id);
+
+        // Check if user has water reminders enabled and this time is in their schedule
+        if (
+          prefs.waterReminders &&
+          prefs.pushEnabled &&
+          prefs.waterReminderTimes?.includes(time)
+        ) {
+          const sent = await this.webPushService.sendWaterReminder(
+            user.id,
+            user.displayName || 'there',
+          );
+
+          if (sent > 0) sentCount++;
+        }
+      }
+
+      this.logger.log(`✅ Sent water reminders to ${sentCount} users at ${time}`);
+    } catch (error) {
+      this.logger.error(`Error sending water reminders at ${time}:`, error);
+    }
+  }
+
+  /**
+   * Send meal reminders at breakfast time (8 AM)
+   */
+  @Cron('0 8 * * *', {
+    name: 'meal-reminder-breakfast',
+    timeZone: 'America/New_York',
+  })
+  async sendBreakfastReminder() {
+    await this.sendMealReminders('08:00', 'breakfast');
+  }
+
+  /**
+   * Send meal reminders at lunch time (12 PM)
+   */
+  @Cron('0 12 * * *', {
+    name: 'meal-reminder-lunch',
+    timeZone: 'America/New_York',
+  })
+  async sendLunchReminder() {
+    await this.sendMealReminders('12:00', 'lunch');
+  }
+
+  /**
+   * Send meal reminders at dinner time (6 PM)
+   */
+  @Cron('0 18 * * *', {
+    name: 'meal-reminder-dinner',
+    timeZone: 'America/New_York',
+  })
+  async sendDinnerReminder() {
+    await this.sendMealReminders('18:00', 'dinner');
+  }
+
+  /**
+   * Send meal reminders to all users who have it enabled for this time
+   */
+  private async sendMealReminders(time: string, mealType: string) {
+    this.logger.log(`Sending ${mealType} reminders for ${time}...`);
+
+    try {
+      const allUsers = await this.drizzle.db
+        .select({
+          user: users,
+          profile: userProfiles,
+        })
+        .from(users)
+        .leftJoin(userProfiles, eq(userProfiles.userId, users.id));
+
+      let sentCount = 0;
+
+      for (const { user, profile } of allUsers) {
+        const prefs = await this.webPushService.getPreferences(user.id);
+
+        if (
+          prefs.mealReminders &&
+          prefs.pushEnabled &&
+          prefs.mealReminderTimes?.includes(time)
+        ) {
+          const sent = await this.webPushService.sendMealReminder(
+            user.id,
+            user.displayName || 'there',
+            mealType,
+          );
+
+          if (sent > 0) sentCount++;
+        }
+      }
+
+      this.logger.log(`✅ Sent ${mealType} reminders to ${sentCount} users at ${time}`);
+    } catch (error) {
+      this.logger.error(`Error sending ${mealType} reminders at ${time}:`, error);
+    }
+  }
 }
+
