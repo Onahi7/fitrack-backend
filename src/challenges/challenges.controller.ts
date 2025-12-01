@@ -46,10 +46,40 @@ export class ChallengesController {
   @UseInterceptors(FileInterceptor('image'))
   async createAdminChallenge(
     @UserId() userId: string,
-    @Body() createChallengeDto: CreateChallengeDto,
+    @Body() body: any,
     @UploadedFile() file?: any,
   ) {
-    return this.challengesService.createAdminChallenge(userId, createChallengeDto, file);
+    // When using FormData, parse the body fields
+    const createChallengeDto: CreateChallengeDto = {
+      name: body.name,
+      description: body.description,
+      type: body.type,
+      goal: parseInt(body.goal),
+      duration: parseInt(body.duration),
+      startDate: body.startDate,
+      imageUrl: body.imageUrl,
+      isPremiumChallenge: body.isPremiumChallenge === 'true',
+      requiresSubscription: body.requiresSubscription === 'true',
+      subscriptionTier: body.subscriptionTier,
+      gift30Days: body.gift30Days === 'true',
+    };
+
+    // Parse dailyTasks if present
+    let dailyTasks;
+    if (body.dailyTasks) {
+      try {
+        dailyTasks = JSON.parse(body.dailyTasks);
+      } catch (e) {
+        // If parsing fails, ignore
+      }
+    }
+
+    return this.challengesService.createAdminChallenge(
+      userId,
+      createChallengeDto,
+      file,
+      dailyTasks,
+    );
   }
 
   @Get()

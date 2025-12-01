@@ -60,6 +60,7 @@ export class ChallengesService {
     userId: string,
     createChallengeDto: CreateChallengeDto,
     file?: any,
+    dailyTasks?: any[],
   ) {
     const startDate = new Date(createChallengeDto.startDate);
     const endDate = new Date(startDate);
@@ -106,13 +107,13 @@ export class ChallengesService {
         requiresSubscription: createChallengeDto.requiresSubscription || false,
         subscriptionTier: createChallengeDto.subscriptionTier,
         gift30Days: createChallengeDto.gift30Days || false,
-        hasDynamicTasks: createChallengeDto.hasDynamicTasks || false,
+        hasDynamicTasks: (dailyTasks && dailyTasks.length > 0) || false,
       })
       .returning();
 
     // Create daily tasks if provided
-    if (createChallengeDto.dailyTasks && createChallengeDto.dailyTasks.length > 0) {
-      const tasksToInsert = createChallengeDto.dailyTasks.map(task => ({
+    if (dailyTasks && dailyTasks.length > 0) {
+      const tasksToInsert = dailyTasks.map(task => ({
         challengeId: challenge.id,
         taskType: task.taskType,
         title: task.title,
