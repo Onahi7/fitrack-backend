@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import { DrizzleService } from '../database/drizzle.service';
+import { EmailService } from '../email/email.service';
 import {
   challenges,
   challengeParticipants,
@@ -24,6 +25,7 @@ export class ChallengesService {
   constructor(
     private readonly drizzle: DrizzleService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {
     // Initialize Cloudinary
     cloudinary.config({
@@ -129,6 +131,36 @@ export class ChallengesService {
       }));
 
       await this.drizzle.db.insert(challengeDailyTasks).values(tasksToInsert);
+    }
+
+    // Send email notifications to all users (in batches of 2)
+    try {
+      const allUsers = await this.drizzle.db
+        .select({
+          email: users.email,
+          displayName: users.displayName,
+        })
+        .from(users)
+        .where(sql`${users.email} IS NOT NULL AND ${users.email} != ''`);
+
+      const emailPromises = allUsers.map(user =>
+        this.emailService.sendNewChallengeNotification(
+          user.email,
+          user.displayName || 'User',
+          challenge.name,
+          challenge.description,
+          challenge.type,
+          challenge.duration,
+          imageUrl,
+        ),
+      );
+
+      // Send in batches of 2 to respect rate limits
+      this.emailService.sendBatchEmails(emailPromises, 2).catch(err =>
+        console.error('Error sending challenge notification emails:', err),
+      );
+    } catch (error) {
+      console.error('Error preparing challenge notification emails:', error);
     }
 
     return challenge;
@@ -289,6 +321,21 @@ export class ChallengesService {
         });
       
       message = 'Joined successfully and received 30 days premium access!';
+    }
+
+    // Send email notification
+    try {
+      if (user.email) {
+        await this.emailService.sendChallengeJoinedNotification(
+          user.email,
+          user.displayName || 'User',
+          challenge.name,
+          challenge.startDate.toISOString(),
+          challenge.duration,
+        );
+      }
+    } catch (error) {
+      console.error('Error sending challenge joined email:', error);
     }
 
     return { message };

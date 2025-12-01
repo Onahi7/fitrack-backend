@@ -215,4 +215,356 @@ export class EmailService {
       html,
     });
   }
+
+  async sendNewChallengeNotification(
+    email: string,
+    name: string,
+    challengeName: string,
+    challengeDescription: string,
+    challengeType: string,
+    duration: number,
+    imageUrl?: string,
+  ) {
+    if (!this.resend) return;
+
+    const typeEmoji = this.getChallengeTypeEmoji(challengeType);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .challenge-card { background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; }
+            .challenge-image { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: 600; margin-top: 20px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎯 New Challenge Available!</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${name}! 👋</p>
+              <p>An exciting new challenge has been created just for you!</p>
+              <div class="challenge-card">
+                ${imageUrl ? `<img src="${imageUrl}" alt="${challengeName}" class="challenge-image" />` : ''}
+                <h2>${typeEmoji} ${challengeName}</h2>
+                <p>${challengeDescription}</p>
+                <p><strong>Duration:</strong> ${duration} days</p>
+              </div>
+              <p>Join now and start your journey to success!</p>
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/challenges" class="button">
+                View Challenge
+              </a>
+            </div>
+            <div class="footer">
+              <p>Challenge yourself and achieve greatness! 💪</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.resend.emails.send({
+      from: 'Intentional <onboarding@resend.dev>',
+      to: email,
+      subject: `🎯 New Challenge: ${challengeName} - Intentional`,
+      html,
+    });
+  }
+
+  async sendChallengeJoinedNotification(
+    email: string,
+    name: string,
+    challengeName: string,
+    startDate: string,
+    duration: number,
+  ) {
+    if (!this.resend) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .info-box { background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: 600; margin-top: 20px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 You're In!</h1>
+            </div>
+            <div class="content">
+              <p>Congratulations, ${name}! 🎊</p>
+              <p>You've successfully joined the <strong>${challengeName}</strong> challenge!</p>
+              <div class="info-box">
+                <p><strong>Start Date:</strong> ${new Date(startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                <p><strong>Duration:</strong> ${duration} days</p>
+                <p><strong>Next Steps:</strong></p>
+                <ul>
+                  <li>✅ Complete daily tasks</li>
+                  <li>📊 Track your progress</li>
+                  <li>🏆 Earn achievements</li>
+                  <li>👥 Connect with other participants</li>
+                </ul>
+              </div>
+              <p>Get ready to crush your goals!</p>
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/challenges" class="button">
+                View My Challenges
+              </a>
+            </div>
+            <div class="footer">
+              <p>You've got this! We're cheering for you! 🌟</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.resend.emails.send({
+      from: 'Intentional <onboarding@resend.dev>',
+      to: email,
+      subject: `🎉 Welcome to ${challengeName} - Intentional`,
+      html,
+    });
+  }
+
+  async sendChallengeStartingSoonNotification(
+    email: string,
+    name: string,
+    challengeName: string,
+    startDate: string,
+  ) {
+    if (!this.resend) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .countdown { background: #f8f9fa; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center; }
+            .countdown h2 { color: #667eea; font-size: 48px; margin: 10px 0; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: 600; margin-top: 20px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>⏰ Challenge Starts Tomorrow!</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${name}! 👋</p>
+              <p>Get ready! Your challenge <strong>${challengeName}</strong> starts tomorrow!</p>
+              <div class="countdown">
+                <h2>24</h2>
+                <p>Hours to Go!</p>
+              </div>
+              <p><strong>Start Date:</strong> ${new Date(startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <p>Time to prepare:</p>
+              <ul>
+                <li>🎯 Review your goals</li>
+                <li>📋 Check the daily tasks</li>
+                <li>💪 Get mentally ready</li>
+                <li>🌟 Stay motivated!</li>
+              </ul>
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/challenges" class="button">
+                View Challenge Details
+              </a>
+            </div>
+            <div class="footer">
+              <p>Tomorrow is the start of something amazing! 🚀</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.resend.emails.send({
+      from: 'Intentional <onboarding@resend.dev>',
+      to: email,
+      subject: `⏰ ${challengeName} Starts Tomorrow - Intentional`,
+      html,
+    });
+  }
+
+  async sendDailyChallengeTaskReminder(
+    email: string,
+    name: string,
+    challengeName: string,
+    tasksCompleted: number,
+    totalTasks: number,
+  ) {
+    if (!this.resend) return;
+
+    const progress = totalTasks > 0 ? Math.round((tasksCompleted / totalTasks) * 100) : 0;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .progress-bar { background: #e0e0e0; border-radius: 12px; height: 30px; margin: 20px 0; overflow: hidden; }
+            .progress-fill { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; border-radius: 12px; transition: width 0.3s; }
+            .stats { background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: 600; margin-top: 20px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📋 Daily Task Reminder</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${name}! 👋</p>
+              <p>Don't forget to complete your daily tasks for <strong>${challengeName}</strong>!</p>
+              <div class="stats">
+                <p><strong>Today's Progress</strong></p>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <p style="text-align: center; font-size: 18px; font-weight: 600; color: #667eea;">
+                  ${tasksCompleted} / ${totalTasks} tasks completed (${progress}%)
+                </p>
+              </div>
+              ${tasksCompleted === totalTasks ? 
+                '<p>🎉 Amazing! You\'ve completed all your tasks today!</p>' :
+                '<p>Keep going! You\'re making great progress!</p>'
+              }
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/challenges" class="button">
+                Complete Tasks
+              </a>
+            </div>
+            <div class="footer">
+              <p>Every task completed is a step toward your goal! 💪</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.resend.emails.send({
+      from: 'Intentional <onboarding@resend.dev>',
+      to: email,
+      subject: `📋 Daily Tasks for ${challengeName} - Intentional`,
+      html,
+    });
+  }
+
+  async sendChallengeCompletedNotification(
+    email: string,
+    name: string,
+    challengeName: string,
+    completionRate: number,
+    rank?: number,
+    totalParticipants?: number,
+  ) {
+    if (!this.resend) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+            .content { padding: 30px 20px; text-align: center; }
+            .trophy { font-size: 80px; margin: 20px 0; }
+            .stats { background: #f8f9fa; padding: 30px; border-radius: 12px; margin: 20px 0; }
+            .stat-item { margin: 15px 0; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: 600; margin-top: 20px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🏆 Challenge Completed!</h1>
+            </div>
+            <div class="content">
+              <div class="trophy">🎉</div>
+              <p>Congratulations, ${name}! 🎊</p>
+              <p>You've successfully completed the <strong>${challengeName}</strong> challenge!</p>
+              <div class="stats">
+                <div class="stat-item">
+                  <h2 style="color: #667eea; margin: 5px 0;">${completionRate}%</h2>
+                  <p>Completion Rate</p>
+                </div>
+                ${rank && totalParticipants ? `
+                  <div class="stat-item">
+                    <h2 style="color: #667eea; margin: 5px 0;">#${rank}</h2>
+                    <p>Your Rank (out of ${totalParticipants})</p>
+                  </div>
+                ` : ''}
+              </div>
+              <p>You've shown incredible dedication and commitment!</p>
+              <p>Keep up the momentum with our other challenges!</p>
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/challenges" class="button">
+                Browse More Challenges
+              </a>
+            </div>
+            <div class="footer">
+              <p>You're a champion! Keep crushing your goals! 🌟</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.resend.emails.send({
+      from: 'Intentional <onboarding@resend.dev>',
+      to: email,
+      subject: `🏆 You Completed ${challengeName}! - Intentional`,
+      html,
+    });
+  }
+
+  private getChallengeTypeEmoji(type: string): string {
+    switch (type) {
+      case 'water': return '💧';
+      case 'meals': return '🍽️';
+      case 'streak': return '🔥';
+      case 'exercise': return '🏋️';
+      case 'fasting': return '⏱️';
+      default: return '🎯';
+    }
+  }
+
+  // Batch send emails with rate limiting (2 emails per batch)
+  async sendBatchEmails(
+    emailPromises: Array<Promise<any>>,
+    batchSize: number = 2,
+  ): Promise<void> {
+    for (let i = 0; i < emailPromises.length; i += batchSize) {
+      const batch = emailPromises.slice(i, i + batchSize);
+      await Promise.all(batch);
+      // Wait 1 second between batches to respect rate limits
+      if (i + batchSize < emailPromises.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
 }
