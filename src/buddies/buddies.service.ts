@@ -123,6 +123,8 @@ export class BuddiesService {
    * Get all buddy requests (pending)
    */
   async getPendingRequests(userId: string) {
+    console.log('[BuddiesService] Getting pending requests for user:', userId);
+    
     const requests = await this.drizzle.db
       .select({
         id: buddyPairs.id,
@@ -131,7 +133,7 @@ export class BuddiesService {
         createdAt: buddyPairs.createdAt,
       })
       .from(buddyPairs)
-      .leftJoin(users, eq(users.id, buddyPairs.user1Id))
+      .innerJoin(users, eq(users.id, buddyPairs.user1Id))
       .where(
         and(
           eq(buddyPairs.user2Id, userId),
@@ -139,6 +141,7 @@ export class BuddiesService {
         )
       );
 
+    console.log('[BuddiesService] Found', requests.length, 'pending requests');
     return requests;
   }
 

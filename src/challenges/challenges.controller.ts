@@ -151,6 +151,12 @@ export class ChallengesController {
     return this.challengesService.getAdminStats();
   }
 
+  @Get('admin/all')
+  @UseGuards(AdminGuard)
+  getAllChallengesForAdmin() {
+    return this.challengesService.findAllForAdmin();
+  }
+
   @Get('premium-banners')
   getPremiumBanners(@UserId() userId: string) {
     return this.challengesService.getPremiumBanners(userId);

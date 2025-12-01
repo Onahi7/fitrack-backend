@@ -167,10 +167,11 @@ export class ChallengesService {
   }
 
   async findAll(userId: string, limit = 50, offset = 0) {
-    // Only show:
+    // Show:
     // 1. Challenges created by the user
     // 2. Challenges the user is participating in
-    // 3. Public challenges (if we add that feature later)
+    // 3. Public challenges (isPublic = true)
+    // 4. Premium challenges (isPremiumChallenge = true)
     const userChallenges = await this.drizzle.db
       .select({
         id: challenges.id,
@@ -186,6 +187,11 @@ export class ChallengesService {
         imageUrl: challenges.imageUrl,
         isPublic: challenges.isPublic,
         inviteOnly: challenges.inviteOnly,
+        isPremiumChallenge: challenges.isPremiumChallenge,
+        requiresSubscription: challenges.requiresSubscription,
+        subscriptionTier: challenges.subscriptionTier,
+        gift30Days: challenges.gift30Days,
+        hasDynamicTasks: challenges.hasDynamicTasks,
         createdAt: challenges.createdAt,
         isParticipant: sql<boolean>`EXISTS (
           SELECT 1 FROM ${challengeParticipants}
@@ -196,7 +202,10 @@ export class ChallengesService {
       })
       .from(challenges)
       .where(
-        sql`${challenges.creatorId} = ${userId} OR EXISTS (
+        sql`${challenges.creatorId} = ${userId} 
+        OR ${challenges.isPublic} = true
+        OR ${challenges.isPremiumChallenge} = true
+        OR EXISTS (
           SELECT 1 FROM ${challengeParticipants}
           WHERE ${challengeParticipants.challengeId} = ${challenges.id}
           AND ${challengeParticipants.userId} = ${userId}
@@ -207,6 +216,36 @@ export class ChallengesService {
       .offset(offset);
 
     return userChallenges;
+  }
+
+  async findAllForAdmin() {
+    // Admin sees ALL challenges, no filtering
+    const allChallenges = await this.drizzle.db
+      .select({
+        id: challenges.id,
+        name: challenges.name,
+        description: challenges.description,
+        type: challenges.type,
+        goal: challenges.goal,
+        duration: challenges.duration,
+        startDate: challenges.startDate,
+        endDate: challenges.endDate,
+        participantCount: challenges.participantCount,
+        creatorId: challenges.creatorId,
+        imageUrl: challenges.imageUrl,
+        isPublic: challenges.isPublic,
+        inviteOnly: challenges.inviteOnly,
+        isPremiumChallenge: challenges.isPremiumChallenge,
+        requiresSubscription: challenges.requiresSubscription,
+        subscriptionTier: challenges.subscriptionTier,
+        gift30Days: challenges.gift30Days,
+        hasDynamicTasks: challenges.hasDynamicTasks,
+        createdAt: challenges.createdAt,
+      })
+      .from(challenges)
+      .orderBy(desc(challenges.createdAt));
+
+    return allChallenges;
   }
 
   async findOne(id: number) {
