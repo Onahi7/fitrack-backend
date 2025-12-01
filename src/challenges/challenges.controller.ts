@@ -47,7 +47,7 @@ export class ChallengesController {
   async createAdminChallenge(
     @UserId() userId: string,
     @Body() createChallengeDto: CreateChallengeDto,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFile() file?: any,
   ) {
     return this.challengesService.createAdminChallenge(userId, createChallengeDto, file);
   }

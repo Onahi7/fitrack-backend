@@ -59,7 +59,7 @@ export class ChallengesService {
   async createAdminChallenge(
     userId: string,
     createChallengeDto: CreateChallengeDto,
-    file?: Express.Multer.File,
+    file?: any,
   ) {
     const startDate = new Date(createChallengeDto.startDate);
     const endDate = new Date(startDate);
