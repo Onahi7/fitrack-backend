@@ -9,9 +9,18 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   
   // Enable CORS
+  const allowedOrigins = configService.get('ALLOWED_ORIGINS')?.split(',') || [
+    'http://localhost:5173',
+    'https://fittrac.me',
+    'https://fittrack.vercel.app',
+    'https://www.fittrac.me'
+  ];
+  
   app.enableCors({
-    origin: configService.get('ALLOWED_ORIGINS')?.split(',') || '*',
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
   
   // Global validation pipe
