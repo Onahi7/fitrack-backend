@@ -121,28 +121,30 @@ export class UsersService {
       fastingProtocol,
     } = dto;
     
+    // Build update object with proper type conversions
+    const updateData: any = {
+      setupCompleted: true,
+      updatedAt: new Date(),
+    };
+
+    // Handle numeric fields (convert to strings for database)
+    if (startingWeight !== undefined) updateData.startingWeight = String(startingWeight);
+    if (currentWeight !== undefined) updateData.currentWeight = String(currentWeight);
+    if (goalWeight !== undefined) updateData.goalWeight = String(goalWeight);
+    if (height !== undefined) updateData.height = String(height);
+    if (dailyCalorieGoal !== undefined) updateData.dailyCalorieGoal = String(dailyCalorieGoal);
+    if (dailyWaterGoal !== undefined) updateData.dailyWaterGoal = String(dailyWaterGoal);
+    
+    // Handle Date fields (convert string to Date)
+    if (fastingStartTime !== undefined) updateData.fastingStartTime = new Date(fastingStartTime);
+    
+    // Handle other fields directly
+    if (tutorialCompleted !== undefined) updateData.tutorialCompleted = tutorialCompleted;
+    if (fastingProtocol !== undefined) updateData.fastingProtocol = fastingProtocol;
+    
     const [profile] = await this.drizzle.db
       .update(userProfiles)
-      .set({
-        // Handle numeric fields (convert to strings for database)
-        startingWeight: startingWeight !== undefined ? String(startingWeight) : undefined,
-        currentWeight: currentWeight !== undefined ? String(currentWeight) : undefined,
-        goalWeight: goalWeight !== undefined ? String(goalWeight) : undefined,
-        height: height !== undefined ? String(height) : undefined,
-        dailyCalorieGoal: dailyCalorieGoal !== undefined ? String(dailyCalorieGoal) : undefined,
-        dailyWaterGoal: dailyWaterGoal !== undefined ? String(dailyWaterGoal) : undefined,
-        
-        // Handle Date fields (convert string to Date)
-        fastingStartTime: fastingStartTime !== undefined ? new Date(fastingStartTime) : undefined,
-        
-        // Handle other fields directly
-        tutorialCompleted,
-        fastingProtocol,
-        
-        // Always update these
-        setupCompleted: true,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(userProfiles.userId, userId))
       .returning();
 
