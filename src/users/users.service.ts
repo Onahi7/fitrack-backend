@@ -108,7 +108,7 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    // Convert numeric fields to strings for Drizzle
+    // Extract all fields that need type conversion
     const {
       startingWeight,
       currentWeight,
@@ -117,19 +117,29 @@ export class UsersService {
       dailyCalorieGoal,
       dailyWaterGoal,
       fastingStartTime,
-      ...rest
+      tutorialCompleted,
+      fastingProtocol,
     } = dto;
+    
     const [profile] = await this.drizzle.db
       .update(userProfiles)
       .set({
-        ...rest,
+        // Handle numeric fields (convert to strings for database)
         startingWeight: startingWeight !== undefined ? String(startingWeight) : undefined,
         currentWeight: currentWeight !== undefined ? String(currentWeight) : undefined,
         goalWeight: goalWeight !== undefined ? String(goalWeight) : undefined,
         height: height !== undefined ? String(height) : undefined,
         dailyCalorieGoal: dailyCalorieGoal !== undefined ? String(dailyCalorieGoal) : undefined,
         dailyWaterGoal: dailyWaterGoal !== undefined ? String(dailyWaterGoal) : undefined,
+        
+        // Handle Date fields (convert string to Date)
         fastingStartTime: fastingStartTime !== undefined ? new Date(fastingStartTime) : undefined,
+        
+        // Handle other fields directly
+        tutorialCompleted,
+        fastingProtocol,
+        
+        // Always update these
         setupCompleted: true,
         updatedAt: new Date(),
       })

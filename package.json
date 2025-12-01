@@ -1,7 +1,7 @@
 {
   "name": "fittrack-backend",
   "version": "1.0.0",
-  "description": "FitTrack NestJS Backend API",
+  "description": "Fittrack NestJS Backend API - Your Health Accountability Partner",
   "author": "Onahi7",
   "private": true,
   "license": "MIT",
