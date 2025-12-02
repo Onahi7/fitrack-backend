@@ -120,6 +120,33 @@ export class ChallengesController {
     return this.challengesService.findOne(this.parseIntParam(id, 'challenge ID'));
   }
 
+  @Put(':id')
+  @UseGuards(AdminGuard)
+  @UseInterceptors(FileInterceptor('image'))
+  async updateChallenge(
+    @Param('id') id: string,
+    @Body() body: any,
+    @UploadedFile() file?: any,
+  ) {
+    const challengeId = this.parseIntParam(id, 'challenge ID');
+    
+    // When using FormData, parse the body fields
+    const updateData: Partial<CreateChallengeDto> = {};
+    
+    if (body.name) updateData.name = body.name;
+    if (body.description) updateData.description = body.description;
+    if (body.type) updateData.type = body.type;
+    if (body.goal) updateData.goal = parseInt(body.goal);
+    if (body.duration) updateData.duration = parseInt(body.duration);
+    if (body.startDate) updateData.startDate = body.startDate;
+    if (body.imageUrl) updateData.imageUrl = body.imageUrl;
+    if (body.isPremiumChallenge !== undefined) updateData.isPremiumChallenge = body.isPremiumChallenge === 'true';
+    if (body.requiresSubscription !== undefined) updateData.requiresSubscription = body.requiresSubscription === 'true';
+    if (body.subscriptionTier) updateData.subscriptionTier = body.subscriptionTier;
+
+    return this.challengesService.updateChallenge(challengeId, updateData, file);
+  }
+
   @Post(':id/join')
   join(@Param('id') id: string, @UserId() userId: string) {
     return this.challengesService.join(this.parseIntParam(id, 'challenge ID'), userId);

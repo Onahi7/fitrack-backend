@@ -172,6 +172,70 @@ export class ChallengesService {
     return challenge;
   }
 
+  async updateChallenge(
+    challengeId: number,
+    updateData: Partial<CreateChallengeDto>,
+    file?: any,
+  ) {
+    // Get existing challenge
+    const existingChallenge = await this.findOne(challengeId);
+
+    let imageUrl = updateData.imageUrl || existingChallenge.imageUrl;
+
+    // Upload new image to Cloudinary if file is provided
+    if (file) {
+      const uploadResult = await new Promise<any>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'challenges',
+            transformation: [
+              { width: 800, height: 600, crop: 'fill' },
+              { quality: 'auto' },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          },
+        );
+
+        if (file.buffer) {
+          const bufferStream = require('stream').Readable.from(file.buffer);
+          bufferStream.pipe(uploadStream);
+        }
+      });
+
+      imageUrl = uploadResult.secure_url;
+    }
+
+    // Calculate new end date if duration or start date changed
+    let endDate = existingChallenge.endDate;
+    if (updateData.startDate || updateData.duration) {
+      const startDate = updateData.startDate 
+        ? new Date(updateData.startDate) 
+        : existingChallenge.startDate;
+      const duration = updateData.duration || existingChallenge.duration;
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + duration);
+    }
+
+    // Update challenge
+    const [updatedChallenge] = await this.drizzle.db
+      .update(challenges)
+      .set({
+        ...updateData,
+        imageUrl,
+        endDate,
+        startDate: updateData.startDate 
+          ? new Date(updateData.startDate)
+          : existingChallenge.startDate,
+      })
+      .where(eq(challenges.id, challengeId))
+      .returning();
+
+    return updatedChallenge;
+  }
+
   async findAll(userId: string, limit = 50, offset = 0) {
     // Show:
     // 1. Challenges created by the user
