@@ -11,3 +11,4 @@ export * from './subscriptions.schema';
 export * from './posts.schema';
 export * from './community.schema';
 export * from './push-subscriptions.schema';
+export * from './email-queue.schema';

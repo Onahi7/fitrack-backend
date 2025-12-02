@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import { DrizzleService } from '../database/drizzle.service';
 import { EmailService } from '../email/email.service';
+import { EmailQueueService } from '../email/email-queue.service';
 import {
   challenges,
   challengeParticipants,
@@ -26,6 +27,7 @@ export class ChallengesService {
     private readonly drizzle: DrizzleService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly emailQueueService: EmailQueueService,
   ) {
     // Initialize Cloudinary
     cloudinary.config({
@@ -133,34 +135,38 @@ export class ChallengesService {
       await this.drizzle.db.insert(challengeDailyTasks).values(tasksToInsert);
     }
 
-    // Send email notifications to all users (in batches of 2)
+    // Queue email notifications to all users
     try {
       const allUsers = await this.drizzle.db
         .select({
+          id: users.id,
           email: users.email,
           displayName: users.displayName,
         })
         .from(users)
         .where(sql`${users.email} IS NOT NULL AND ${users.email} != ''`);
 
-      const emailPromises = allUsers.map(user =>
-        this.emailService.sendNewChallengeNotification(
-          user.email,
-          user.displayName || 'User',
-          challenge.name,
-          challenge.description,
-          challenge.type,
-          challenge.duration,
+      const emailQueue = allUsers.map(user => ({
+        recipient: user.email,
+        recipientName: user.displayName || 'User',
+        recipientUserId: user.id,
+        subject: `🎯 New Challenge: ${challenge.name} - Intentional`,
+        emailType: 'challenge_new',
+        templateData: {
+          name: user.displayName || 'User',
+          challengeName: challenge.name,
+          challengeDescription: challenge.description,
+          challengeType: challenge.type,
+          duration: challenge.duration,
           imageUrl,
-        ),
-      );
+        },
+        priority: 5,
+      }));
 
-      // Send in batches of 2 to respect rate limits
-      this.emailService.sendBatchEmails(emailPromises, 2).catch(err =>
-        console.error('Error sending challenge notification emails:', err),
-      );
+      await this.emailQueueService.queueBulkEmails(emailQueue);
+      console.log(`Queued ${emailQueue.length} challenge notification emails`);
     } catch (error) {
-      console.error('Error preparing challenge notification emails:', error);
+      console.error('Error queueing challenge notification emails:', error);
     }
 
     return challenge;
@@ -362,19 +368,26 @@ export class ChallengesService {
       message = 'Joined successfully and received 30 days premium access!';
     }
 
-    // Send email notification
+    // Queue email notification
     try {
       if (user.email) {
-        await this.emailService.sendChallengeJoinedNotification(
-          user.email,
-          user.displayName || 'User',
-          challenge.name,
-          challenge.startDate.toISOString(),
-          challenge.duration,
-        );
+        await this.emailQueueService.queueEmail({
+          recipient: user.email,
+          recipientName: user.displayName || 'User',
+          recipientUserId: userId,
+          subject: `🎉 Welcome to ${challenge.name} - Intentional`,
+          emailType: 'challenge_joined',
+          templateData: {
+            name: user.displayName || 'User',
+            challengeName: challenge.name,
+            startDate: challenge.startDate.toISOString(),
+            duration: challenge.duration,
+          },
+          priority: 7, // Higher priority for immediate actions
+        });
       }
     } catch (error) {
-      console.error('Error sending challenge joined email:', error);
+      console.error('Error queueing challenge joined email:', error);
     }
 
     return { message };
@@ -886,6 +899,55 @@ export class ChallengesService {
         engagementRate: 0,
       })
       .returning();
+
+    // Send email notifications to all challenge participants
+    try {
+      // Get challenge details
+      const [challenge] = await this.drizzle.db
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, challengeId))
+        .limit(1);
+
+      if (challenge) {
+        // Get all participants with their user info
+        const participants = await this.drizzle.db
+          .select({
+            userId: challengeParticipants.userId,
+            email: users.email,
+            displayName: users.displayName,
+          })
+          .from(challengeParticipants)
+          .innerJoin(users, eq(users.id, challengeParticipants.userId))
+          .where(eq(challengeParticipants.challengeId, challengeId));
+
+        // Queue email for each participant
+        for (const participant of participants) {
+          if (participant.email) {
+            await this.emailQueueService.queueEmail({
+              recipient: participant.email,
+              recipientName: participant.displayName || 'User',
+              recipientUserId: participant.userId,
+              subject: `📋 New Daily Task: ${taskData.title} - ${challenge.name}`,
+              emailType: 'daily_task_created',
+              templateData: {
+                name: participant.displayName || 'User',
+                challengeName: challenge.name,
+                taskTitle: taskData.title,
+                taskDescription: taskData.description || '',
+                taskType: taskData.taskType,
+                points: taskData.points ?? 10,
+                taskDate: taskData.taskDate?.toISOString() || new Date().toISOString(),
+              },
+              priority: 6, // Medium-high priority for new tasks
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to queue emails for new daily task:', error);
+      // Don't fail task creation if email queueing fails
+    }
 
     return task;
   }

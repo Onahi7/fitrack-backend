@@ -553,6 +553,87 @@ export class EmailService {
     }
   }
 
+  async sendDailyTaskCreatedNotification(
+    email: string,
+    name: string,
+    challengeName: string,
+    taskTitle: string,
+    taskDescription: string,
+    taskType: string,
+    points: number,
+    taskDate: string,
+  ) {
+    if (!this.resend) return;
+
+    const taskEmoji = this.getChallengeTypeEmoji(taskType);
+    const formattedDate = new Date(taskDate).toLocaleDateString('en-US', { 
+      weekday: 'long',
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric' 
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .task-card { background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #667eea; }
+            .task-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+            .task-title { font-size: 20px; font-weight: 600; color: #667eea; }
+            .points-badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; }
+            .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 12px; font-weight: 600; margin-top: 20px; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+            .date-info { background: #e8eaf6; padding: 10px 15px; border-radius: 8px; display: inline-block; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📋 New Daily Task Added!</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${name}! 👋</p>
+              <p>A new task has been added to your <strong>${challengeName}</strong> challenge!</p>
+              
+              <div class="task-card">
+                <div class="task-header">
+                  <span style="font-size: 24px;">${taskEmoji}</span>
+                  <span class="task-title">${taskTitle}</span>
+                  <span class="points-badge">+${points} pts</span>
+                </div>
+                ${taskDescription ? `<p style="color: #666; margin-top: 10px;">${taskDescription}</p>` : ''}
+                <div class="date-info">
+                  📅 <strong>Due:</strong> ${formattedDate}
+                </div>
+              </div>
+
+              <p>Complete this task to earn <strong>${points} points</strong> and stay on track with your challenge!</p>
+              
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/challenges" class="button">
+                View Task
+              </a>
+            </div>
+            <div class="footer">
+              <p>Keep up the great work! Every task brings you closer to your goals. 💪</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.resend.emails.send({
+      from: 'Intentional <onboarding@resend.dev>',
+      to: email,
+      subject: `${taskEmoji} New Task: ${taskTitle} - ${challengeName}`,
+      html,
+    });
+  }
+
   // Batch send emails with rate limiting (2 emails per batch)
   async sendBatchEmails(
     emailPromises: Array<Promise<any>>,

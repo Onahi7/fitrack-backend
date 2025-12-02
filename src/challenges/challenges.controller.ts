@@ -100,6 +100,16 @@ export class ChallengesController {
     return this.challengesService.getUserChallenges(userId);
   }
 
+  @Get('premium-banners')
+  getPremiumBanners(@UserId() userId: string) {
+    return this.challengesService.getPremiumBanners(userId);
+  }
+
+  @Post('track-session')
+  trackSession(@UserId() userId: string) {
+    return this.challengesService.trackUserSession(userId);
+  }
+
   @Get(':id/leaderboard')
   getLeaderboard(@Param('id') id: string) {
     return this.challengesService.getLeaderboard(this.parseIntParam(id, 'challenge ID'));
@@ -157,19 +167,9 @@ export class ChallengesController {
     return this.challengesService.findAllForAdmin();
   }
 
-  @Get('premium-banners')
-  getPremiumBanners(@UserId() userId: string) {
-    return this.challengesService.getPremiumBanners(userId);
-  }
-
   @Post(':id/dismiss-banner')
   dismissBanner(@Param('id') id: string, @UserId() userId: string) {
     return this.challengesService.dismissBanner(this.parseIntParam(id, 'challenge ID'), userId);
-  }
-
-  @Post('track-session')
-  trackSession(@UserId() userId: string) {
-    return this.challengesService.trackUserSession(userId);
   }
 
   @Get(':id/tasks')

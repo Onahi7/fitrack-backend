@@ -21,7 +21,8 @@
     "migrate": "drizzle-kit push:pg",
     "migrate:generate": "drizzle-kit generate:pg",
     "db:studio": "drizzle-kit studio",
-    "generate:vapid": "ts-node src/scripts/generate-vapid-keys.ts"
+    "generate:vapid": "ts-node src/scripts/generate-vapid-keys.ts",
+    "seed:demo": "ts-node src/scripts/seed-demo-users.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

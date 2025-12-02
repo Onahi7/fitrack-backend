@@ -31,11 +31,19 @@ export class BuddiesController {
   }
 
   /**
-   * Get pending buddy requests
+   * Get pending buddy requests (received)
    */
   @Get('requests/pending')
   async getPendingRequests(@CurrentUser() user: any) {
     return this.buddiesService.getPendingRequests(user.uid);
+  }
+
+  /**
+   * Get sent buddy requests (pending)
+   */
+  @Get('requests/sent')
+  async getSentRequests(@CurrentUser() user: any) {
+    return this.buddiesService.getSentRequests(user.uid);
   }
 
   /**

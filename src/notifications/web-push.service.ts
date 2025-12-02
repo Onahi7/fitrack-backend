@@ -137,7 +137,8 @@ export class WebPushService {
         .where(eq(pushSubscriptions.userId, userId));
 
       if (subs.length === 0) {
-        this.logger.log(`No push subscriptions found for user ${userId}`);
+        // Only log in debug mode to reduce spam
+        // this.logger.log(`No push subscriptions found for user ${userId}`);
         return 0;
       }
 

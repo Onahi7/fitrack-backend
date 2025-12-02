@@ -3,10 +3,14 @@ import { DrizzleService } from '../database/drizzle.service';
 import { buddyPairs, users } from '../database/schema';
 import { eq, or, and } from 'drizzle-orm';
 import { CreateBuddyRequestDto, UpdateBuddyDto } from './dto';
+import { EmailQueueService } from '../email/email-queue.service';
 
 @Injectable()
 export class BuddiesService {
-  constructor(private drizzle: DrizzleService) {}
+  constructor(
+    private drizzle: DrizzleService,
+    private emailQueueService: EmailQueueService,
+  ) {}
 
   /**
    * Send a buddy request
@@ -57,6 +61,35 @@ export class BuddiesService {
       })
       .returning();
 
+    // Send email notification to target user
+    try {
+      const [senderUser] = await this.drizzle.db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (targetUser.email) {
+        await this.emailQueueService.queueEmail({
+          recipient: targetUser.email,
+          recipientName: targetUser.displayName || 'User',
+          recipientUserId: targetUser.id,
+          subject: `🤝 ${senderUser.displayName || 'Someone'} wants to be your accountability buddy!`,
+          emailType: 'buddy_request',
+          templateData: {
+            senderName: senderUser.displayName || 'A user',
+            senderEmail: senderUser.email,
+            recipientName: targetUser.displayName || 'User',
+            message: 'wants to be your accountability buddy and support each other on your wellness journey!',
+          },
+          priority: 5,
+        });
+        console.log(`[BuddiesService] Queued buddy request email to ${targetUser.email}`);
+      }
+    } catch (error) {
+      console.error('[BuddiesService] Failed to queue buddy request email:', error);
+    }
+
     return buddyPair;
   }
 
@@ -89,6 +122,40 @@ export class BuddiesService {
       .where(eq(buddyPairs.id, buddyPairId))
       .returning();
 
+    // Send email notification to the requester
+    try {
+      const [accepterUser] = await this.drizzle.db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const [requesterUser] = await this.drizzle.db
+        .select()
+        .from(users)
+        .where(eq(users.id, buddyPair.user1Id))
+        .limit(1);
+
+      if (requesterUser.email) {
+        await this.emailQueueService.queueEmail({
+          recipient: requesterUser.email,
+          recipientName: requesterUser.displayName || 'User',
+          recipientUserId: requesterUser.id,
+          subject: `🎉 ${accepterUser.displayName || 'Someone'} accepted your buddy request!`,
+          emailType: 'buddy_accepted',
+          templateData: {
+            accepterName: accepterUser.displayName || 'A user',
+            recipientName: requesterUser.displayName || 'User',
+            message: 'You are now accountability buddies! Start supporting each other today.',
+          },
+          priority: 5,
+        });
+        console.log(`[BuddiesService] Queued buddy accepted email to ${requesterUser.email}`);
+      }
+    } catch (error) {
+      console.error('[BuddiesService] Failed to queue buddy accepted email:', error);
+    }
+
     return updated;
   }
 
@@ -120,7 +187,7 @@ export class BuddiesService {
   }
 
   /**
-   * Get all buddy requests (pending)
+   * Get all buddy requests (pending) - Received requests
    */
   async getPendingRequests(userId: string) {
     console.log('[BuddiesService] Getting pending requests for user:', userId);
@@ -142,6 +209,32 @@ export class BuddiesService {
       );
 
     console.log('[BuddiesService] Found', requests.length, 'pending requests');
+    return requests;
+  }
+
+  /**
+   * Get sent buddy requests (pending) - Requests I sent
+   */
+  async getSentRequests(userId: string) {
+    console.log('[BuddiesService] Getting sent requests for user:', userId);
+    
+    const requests = await this.drizzle.db
+      .select({
+        id: buddyPairs.id,
+        user: users,
+        sharedGoals: buddyPairs.sharedGoals,
+        createdAt: buddyPairs.createdAt,
+      })
+      .from(buddyPairs)
+      .innerJoin(users, eq(users.id, buddyPairs.user2Id))
+      .where(
+        and(
+          eq(buddyPairs.user1Id, userId),
+          eq(buddyPairs.status, 'pending')
+        )
+      );
+
+    console.log('[BuddiesService] Found', requests.length, 'sent requests');
     return requests;
   }
 
