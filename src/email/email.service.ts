@@ -8,13 +8,24 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    console.log('🔑 Resend API Key configured:', apiKey ? 'Yes' : 'No');
     if (apiKey) {
       this.resend = new Resend(apiKey);
+      console.log('✅ Resend initialized successfully');
+    } else {
+      console.error('❌ RESEND_API_KEY not found in environment variables');
     }
   }
 
   async sendDailyCheckInReminder(email: string, name: string) {
-    if (!this.resend) return;
+    if (!this.resend) {
+      console.error('❌ Resend not initialized, cannot send email');
+      return null;
+    }
+
+    console.log('📧 Sending daily check-in reminder to:', email);
+
+    console.log('📧 Sending daily check-in reminder to:', email);
 
     const html = `
       <!DOCTYPE html>
@@ -32,11 +43,11 @@ export class EmailService {
           </style>
         </head>
         <body>
-          <div class="container">
-            <div class="header">
+          <div class=\"container\">
+            <div class=\"header\">
               <h1>🌟 Daily Check-In Time!</h1>
             </div>
-            <div class="content">
+            <div class=\"content\">
               <p>Hi ${name}! 👋</p>
               <p>Time for your daily wellness check-in. Let's keep that streak going!</p>
               <ul>
@@ -45,11 +56,11 @@ export class EmailService {
                 <li>📝 Update your journal</li>
                 <li>😊 Record your mood</li>
               </ul>
-              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}" class="button">
+              <a href=\"${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}\" class=\"button\">
                 Go to Intentional
               </a>
             </div>
-            <div class="footer">
+            <div class=\"footer\">
               <p>You're doing great! Keep up the momentum.</p>
             </div>
           </div>
@@ -57,12 +68,19 @@ export class EmailService {
       </html>
     `;
 
-    return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
-      to: email,
-      subject: '🌟 Daily Check-In Reminder - Intentional',
-      html,
-    });
+    try {
+      const result = await this.resend.emails.send({
+        from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
+        to: email,
+        subject: '🌟 Daily Check-In Reminder - Intentional',
+        html,
+      });
+      console.log('✅ Email sent successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to send email:', error);
+      throw error;
+    }
   }
 
   async sendWeeklyCheckInReminder(email: string, name: string) {
@@ -110,7 +128,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: '📊 Weekly Check-In Reminder - Intentional',
       html,
@@ -155,7 +173,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `🍽️ ${mealType} Reminder - Intentional`,
       html,
@@ -209,7 +227,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `🏆 Achievement Unlocked: ${achievementName} - Intentional`,
       html,
@@ -272,7 +290,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `🎯 New Challenge: ${challengeName} - Intentional`,
       html,
@@ -335,7 +353,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `🎉 Welcome to ${challengeName} - Intentional`,
       html,
@@ -398,7 +416,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `⏰ ${challengeName} Starts Tomorrow - Intentional`,
       html,
@@ -466,7 +484,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `📋 Daily Tasks for ${challengeName} - Intentional`,
       html,
@@ -535,7 +553,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `🏆 You Completed ${challengeName}! - Intentional`,
       html,
@@ -627,7 +645,7 @@ export class EmailService {
     `;
 
     return this.resend.emails.send({
-      from: 'Intentional <onboarding@resend.dev>',
+      from: this.configService.get('FROM_EMAIL') || 'Intentional <noreply@fittrac.me>',
       to: email,
       subject: `${taskEmoji} New Task: ${taskTitle} - ${challengeName}`,
       html,

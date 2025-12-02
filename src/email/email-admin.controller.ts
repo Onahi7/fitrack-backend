@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { EmailQueueService } from './email-queue.service';
 import { EmailService } from './email.service';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
@@ -43,20 +43,122 @@ export class EmailAdminController {
   }
 
   /**
-   * Send a test email (public for testing)
+   * Send test emails for any template
    */
-  @Post('test')
-  async sendTestEmail() {
+  @Post('send-test')
+  async sendTestEmail(
+    @Body() body: { 
+      templateType: string; 
+      email: string; 
+      name?: string;
+      challengeName?: string;
+      taskTitle?: string;
+      achievementName?: string;
+      mealType?: string;
+    },
+  ) {
     try {
-      const result = await this.emailService.sendDailyCheckInReminder(
-        'dicksnhardy7@gmail.com',
-        'Intentional User',
-      );
+      const { templateType, email, name = 'Test User', challengeName, taskTitle, achievementName, mealType } = body;
+      let result;
+
+      switch (templateType) {
+        case 'daily_checkin':
+          result = await this.emailService.sendDailyCheckInReminder(email, name);
+          break;
+        
+        case 'weekly_checkin':
+          result = await this.emailService.sendWeeklyCheckInReminder(email, name);
+          break;
+        
+        case 'meal_reminder':
+          result = await this.emailService.sendMealReminder(email, name, mealType || 'Breakfast');
+          break;
+        
+        case 'achievement_unlocked':
+          result = await this.emailService.sendAchievementUnlocked(
+            email,
+            name,
+            achievementName || 'First Steps',
+            'Complete your first check-in',
+          );
+          break;
+        
+        case 'new_challenge':
+          result = await this.emailService.sendNewChallengeNotification(
+            email,
+            name,
+            challengeName || '30-Day Wellness Challenge',
+            'Transform your health in 30 days with daily tasks and community support',
+            'wellness',
+            30,
+          );
+          break;
+        
+        case 'challenge_joined':
+          result = await this.emailService.sendChallengeJoinedNotification(
+            email,
+            name,
+            challengeName || '30-Day Wellness Challenge',
+            new Date().toISOString(),
+            30,
+          );
+          break;
+        
+        case 'challenge_starting_soon':
+          result = await this.emailService.sendChallengeStartingSoonNotification(
+            email,
+            name,
+            challengeName || '30-Day Wellness Challenge',
+            new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+          );
+          break;
+        
+        case 'daily_task_reminder':
+          result = await this.emailService.sendDailyChallengeTaskReminder(
+            email,
+            name,
+            challengeName || '30-Day Wellness Challenge',
+            3,
+            8,
+          );
+          break;
+        
+        case 'daily_task_created':
+          result = await this.emailService.sendDailyTaskCreatedNotification(
+            email,
+            name,
+            challengeName || '30-Day Wellness Challenge',
+            taskTitle || 'Morning Workout',
+            'Complete a 30-minute cardio session',
+            'exercise',
+            10,
+            new Date().toISOString(),
+          );
+          break;
+        
+        case 'challenge_completed':
+          result = await this.emailService.sendChallengeCompletedNotification(
+            email,
+            name,
+            challengeName || '30-Day Wellness Challenge',
+            85.5,
+            3,
+            50,
+          );
+          break;
+        
+        default:
+          return {
+            success: false,
+            message: `Unknown template type: ${templateType}`,
+          };
+      }
       
       return {
         success: true,
-        message: 'Test email sent successfully to dicksnhardy7@gmail.com',
-        result,
+        message: `Test email sent successfully to ${email}`,
+        templateType,
+        result: result?.data || result,
       };
     } catch (error) {
       return {
@@ -76,21 +178,23 @@ export class EmailTestController {
   @Post('send-test')
   async sendTest() {
     try {
+      // Resend free tier only allows sending to verified email
       const result = await this.emailService.sendDailyCheckInReminder(
-        'dicksnhardy7@gmail.com',
-        'Test User',
+        'hardytechabuja@gmail.com',
+        'Hardy',
       );
       
       return {
         success: true,
-        message: 'Email sent successfully to dicksnhardy7@gmail.com',
-        result: result?.data,
+        message: 'Email sent successfully to hardytechabuja@gmail.com',
+        result: result?.data || result,
       };
     } catch (error) {
       return {
         success: false,
         message: 'Failed to send email',
         error: error.message,
+        stack: error.stack,
       };
     }
   }
