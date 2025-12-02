@@ -22,7 +22,7 @@ export class UsersService {
       return existingUser;
     }
 
-    // Create new user
+    // Create new user safely handling duplicates
     const [user] = await this.drizzle.db
       .insert(users)
       .values({
@@ -31,9 +31,20 @@ export class UsersService {
         displayName: dto.displayName,
         photoURL: dto.photoURL,
       })
+      .onConflictDoNothing({ target: users.id })
       .returning();
 
-    // Create empty profile
+    // If user was not created (because it existed), fetch and return it
+    if (!user) {
+      const [existingUser] = await this.drizzle.db
+        .select()
+        .from(users)
+        .where(eq(users.id, dto.id))
+        .limit(1);
+      return existingUser;
+    }
+
+    // Create empty profile for new user
     try {
       await this.drizzle.db.insert(userProfiles).values({
         userId: user.id,
