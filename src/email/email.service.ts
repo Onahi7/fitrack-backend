@@ -160,7 +160,7 @@ export class EmailService {
               <p>Hi ${name}! 👋</p>
               <p>Quick reminder to log your ${mealType.toLowerCase()} to keep your nutrition tracking on point.</p>
               <p>📸 Take a quick photo and let our AI estimate the calories!</p>
-              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/meals" class="button">
+              <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/log-meal" class="button">
                 Log ${mealType}
               </a>
             </div>
